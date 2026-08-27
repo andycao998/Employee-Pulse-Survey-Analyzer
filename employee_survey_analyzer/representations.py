@@ -1,5 +1,5 @@
 class SurveyError(Exception):
-    """ Base exception for all errors here """
+    """ Base exception for all survey errors """
     def __init__(self, code: str, status: int, detail: str | None = None) -> None:
         super().__init__(detail or code)
         self.code = code
@@ -17,4 +17,11 @@ class SurveyUnavailableError(SurveyError):
 
 class SurveyUnmodifiableError(SurveyError):
     """ Represents that the survey has a response and can no longer be updated """
-    
+
+class InvalidAuthorizationError(Exception):
+    """ Represents that a response deletion was done without the valid steps"""
+    def __init__(self, code: str, status: int, detail: str | None = None) -> None:
+        super().__init__(detail or code)
+        self.code = code
+        self.status = status
+        self.detail = detail

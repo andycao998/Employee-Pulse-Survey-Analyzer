@@ -46,7 +46,7 @@ class Response(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    body: str = Field(frozen=True)
+    body: str = Field(min_length=15, frozen=True) # extra validation for response immutability
     survey_id: int
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

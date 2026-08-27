@@ -10,5 +10,5 @@ def list_envelope(surveys: list[Survey] | list[Response]):
 def single_envelope(survey: Survey | Response):
     return jsonify(survey.model_dump(mode="json"))
 
-def error_response(code: str, status: int, detail: str | None = None):
-    return jsonify(error=code, detail=detail), status
+def error_response(code: str, status: int, request_id: str, detail: str | None = None):
+    return jsonify(error=code, detail=detail, request_id=request_id), status

@@ -1,11 +1,12 @@
 import os
-from flask import Flask
+import uuid
+from flask import Flask, g
 from flask_migrate import Migrate
 from pydantic import ValidationError
 from employee_survey_analyzer.surveys.routes import surveys_bp
 from employee_survey_analyzer.extensions import db
 from employee_survey_analyzer.responses import error_response
-from employee_survey_analyzer.representations import SurveyNotFoundError, SurveyInvalidDateRangeError, SurveyUnavailableError, SurveyUnmodifiableError
+from employee_survey_analyzer.representations import SurveyNotFoundError, SurveyInvalidDateRangeError, SurveyUnavailableError, SurveyUnmodifiableError, InvalidAuthorizationError
 
 migrate = Migrate()
 
@@ -18,23 +19,30 @@ def create_app():
     db.init_app(app) 
     migrate.init_app(app, db) 
 
+    @app.before_request
+    def get_request_id():
+        g.request_id = str(uuid.uuid4())
 
     # Error Handlers
     @app.errorhandler(SurveyInvalidDateRangeError)
     def handle_survey_date_error(error: SurveyInvalidDateRangeError):
-        return error_response(error.code, error.status, error.detail)
+        return error_response(code=error.code, status=error.status, detail=error.detail, request_id=g.request_id)
 
     @app.errorhandler(SurveyUnavailableError)
     def handle_survey_unavailable_error(error: SurveyUnavailableError):
-        return error_response(error.code, error.status, error.detail)
+        return error_response(code=error.code, status=error.status, detail=error.detail, request_id=g.request_id)
 
     @app.errorhandler(SurveyUnmodifiableError)
     def handle_survey_unmodifiable_error(error: SurveyUnmodifiableError):
-        return error_response(error.code, error.status, error.detail)
+        return error_response(code=error.code, status=error.status, detail=error.detail, request_id=g.request_id)
 
     @app.errorhandler(SurveyNotFoundError)
     def handle_api_error(error: SurveyNotFoundError):
-        return error_response(error.code, error.status, error.detail)
+        return error_response(code=error.code, status=error.status, detail=error.detail, request_id=g.request_id)
+
+    @app.errorhandler(InvalidAuthorizationError)
+    def handle_authorization_error(error: InvalidAuthorizationError):
+        return error_response(code=error.code, status=error.status, detail=error.detail, request_id=g.request_id)
 
     @app.errorhandler(ValidationError)
     def handle_validation_error(error: ValidationError):
@@ -42,14 +50,14 @@ def create_app():
         detail_str = f"{first_error['loc']}: {first_error['msg']}"
 
         # 422 - UNPROCESSABLE_CONTENT > more specific than a 400
-        return error_response("VALIDATION_FAILED", 422, detail_str)
+        return error_response(code="VALIDATION_FAILED", status=422, detail=detail_str, request_id=g.request_id)
 
     @app.errorhandler(Exception)
     def handle_unhandled_exception(error: Exception):
-        return error_response("INTERNAL", 500, "An unexpected error occurred")
+        return error_response(code="INTERNAL", status=500, detail="An unexpected error occurred", request_id=g.request_id)
 
     @app.errorhandler(404)
-    def handle_resource_not_found(error):
-        return error_response("NOT_FOUND", 404, "No route for the given path")
+    def handle_resource_not_found(error: Exception):
+        return error_response(code="NOT_FOUND", status=404, detail="No route for the given path", request_id=g.request_id)
 
     return app
