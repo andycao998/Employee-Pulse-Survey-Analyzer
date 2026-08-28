@@ -5,6 +5,7 @@ from flask import Flask, g, request, Response
 from flask_migrate import Migrate
 from pydantic import ValidationError
 from employee_survey_analyzer.surveys.routes import surveys_bp
+from employee_survey_analyzer.health.routes import health_bp
 from employee_survey_analyzer.extensions import db
 from employee_survey_analyzer.responses import error_response
 from employee_survey_analyzer.representations import SurveyNotFoundError, SurveyInvalidDateRangeError, SurveyUnavailableError, SurveyUnmodifiableError, InvalidAuthorizationError
@@ -15,6 +16,7 @@ migrate = Migrate()
 def create_app():
     app = Flask(__name__)
 
+    app.register_blueprint(health_bp, url_prefix="/health")
     app.register_blueprint(surveys_bp, url_prefix="/api/v1/surveys")
 
     app.config["SQLALCHEMY_DATABASE_URI"] = os.environ["DATABASE_URL"] 
