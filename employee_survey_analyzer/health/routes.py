@@ -1,3 +1,5 @@
+""" Health-check endpoints for application liveness and readiness """
+
 from flask import Blueprint, jsonify
 from employee_survey_analyzer.health.store import ping_db
 
@@ -13,8 +15,8 @@ def liveness():
 # GET /health/ready
 @health_bp.get("/ready")
 def readiness():
-    """ Check if downstream database is reachable """
-    
+    """ Check if downstream database is reachable and nothing else """
+
     if ping_db():
         return jsonify(status="READY"), 200
 

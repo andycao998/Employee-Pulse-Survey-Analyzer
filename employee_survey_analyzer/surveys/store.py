@@ -1,6 +1,10 @@
+""" Database layer for operations needed for business logic in service layer """
+
 from employee_survey_analyzer.surveys.db_models import SurveyRecord, SurveyResponses
 from employee_survey_analyzer.extensions import db
 from sqlalchemy import ScalarResult, select
+
+# ======================== SURVEY QUERIES ========================
 
 def get_all_surveys() -> ScalarResult[SurveyRecord]:
     stmt = select(SurveyRecord).order_by(SurveyRecord.id)
@@ -11,7 +15,7 @@ def get_survey_by_id(survey_id: int) -> SurveyRecord | None:
 
 def create_survey(record: SurveyRecord) -> None:
     db.session.add(record)
-    db.session.flush()
+    db.session.flush() # flush to get the generated PK id before validating
 
 def commit_change() -> None:
     db.session.commit()
@@ -20,8 +24,7 @@ def delete_survey(record: SurveyRecord) -> None:
     db.session.delete(record)
     db.session.commit()
 
-
-
+# ======================== RESPONSE QUERIES ========================
 
 def get_response_by_id(response_id: int) -> SurveyResponses | None:
     return db.session.get(SurveyResponses, response_id)

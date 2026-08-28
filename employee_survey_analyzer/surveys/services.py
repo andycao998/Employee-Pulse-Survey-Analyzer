@@ -1,3 +1,5 @@
+""" Business logic for performing validation and directing database operations on surveys and responses"""
+
 from datetime import date
 from employee_survey_analyzer.surveys.db_models import SurveyRecord, SurveyResponses
 from employee_survey_analyzer.surveys.models import Survey, CreateSurveyDTO, UpdateSurveyDTO, Response, CreateResponseDTO
@@ -5,9 +7,13 @@ from employee_survey_analyzer.surveys import store
 from employee_survey_analyzer.representations import SurveyNotFoundError, SurveyUnavailableError, SurveyUnmodifiableError, InvalidAuthorizationError
 from typing import Literal
 
+# ======================== SURVEY LOGIC ========================
+
 Status = Literal["draft", "open", "closed"]
 
 def get_survey_status(survey: Survey) -> Status:
+    """ Determine survey status based on dates since it isn't stored in survey model """
+
     today = date.today()
 
     if today < survey.open_date:
@@ -18,6 +24,8 @@ def get_survey_status(survey: Survey) -> Status:
     return "closed"
 
 def get_all_surveys() -> list[dict[str, str]]:
+    """ Retrieve all surveys and append their open/closed status to output """
+
     rows = store.get_all_surveys()
 
     surveys = [Survey.model_validate(row) for row in rows]
@@ -31,6 +39,8 @@ def get_all_surveys() -> list[dict[str, str]]:
     ]
 
 def get_survey_by_id(survey_id: int) -> Survey:
+    """ Validate survey exists and return output """
+
     row = store.get_survey_by_id(survey_id)
 
     if row is None:
@@ -39,6 +49,8 @@ def get_survey_by_id(survey_id: int) -> Survey:
     return Survey.model_validate(row)
 
 def create_survey(survey_details: dict[str, str]) -> Survey:
+    """ Validate inputted survey information before delegating survey creation in database """
+
     valid_survey = CreateSurveyDTO.model_validate(survey_details)
 
     record = SurveyRecord(**valid_survey.model_dump())
@@ -51,6 +63,8 @@ def create_survey(survey_details: dict[str, str]) -> Survey:
     return survey
 
 def update_survey(survey_id: int, survey_details: dict[str, str]) -> Survey:
+    """ Only allow survey title, prompt, and close dates to be updated for surveys with no responses """
+
     valid_survey = UpdateSurveyDTO.model_validate(survey_details)
 
     record = store.get_survey_by_id(survey_id)
@@ -70,21 +84,25 @@ def update_survey(survey_id: int, survey_details: dict[str, str]) -> Survey:
     return survey
 
 def delete_survey(survey_id: int) -> None:
+    """ Validate survey exists before deletion """
+
     record = store.get_survey_by_id(survey_id)
     if record is None:
         raise SurveyNotFoundError(code="NOT_FOUND", status=404, detail=f"Survey (ID={survey_id}) not found")
 
     store.delete_survey(record)
 
-
-
-
+# ======================== RESPONSE LOGIC ========================
 
 def get_all_responses(survey_id: int) -> list[Response]:
+    """ Retrieve all responses for a given survey """
+
     rows = store.get_all_responses(survey_id)
     return [Response.model_validate(row) for row in rows]
 
 def validate_response(survey_id: int) -> None:
+    """ Validate survey response eligibility with separate errors for not-yet-open surveys and already-closed surveys """
+
     survey = get_survey_by_id(survey_id)
 
     today = date.today()
@@ -94,6 +112,8 @@ def validate_response(survey_id: int) -> None:
         raise SurveyUnavailableError(code="FORBIDDEN", status=403, detail=f"Survey (ID={survey_id}) already closed")
 
 def create_response(survey_id: int, response_details: dict[str, str]) -> Response:
+    """ Validate response fields and survey status before creation """
+
     validate_response(survey_id)
 
     valid_response = CreateResponseDTO.model_validate({
@@ -111,6 +131,8 @@ def create_response(survey_id: int, response_details: dict[str, str]) -> Respons
     return response
 
 def validate_response_deletion(body: dict[str, str]) -> None:
+    """ Additional check for confirmation of deletion """
+
     confirm_deletion = body.get("confirm_deletion")
 
     # missing confirmation in body will cause deletion to fail
@@ -118,6 +140,8 @@ def validate_response_deletion(body: dict[str, str]) -> None:
         raise InvalidAuthorizationError(code="FORBIDDEN", status=403, detail=f"Invalid confirmation")
 
 def delete_response(response_id: int, body: dict[str, str]):
+    """ Removal response for admins only with additional step """
+
     validate_response_deletion(body)
 
     record = store.get_response_by_id(response_id)

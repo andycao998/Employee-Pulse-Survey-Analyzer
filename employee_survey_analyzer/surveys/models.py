@@ -1,7 +1,11 @@
+""" Models for surveys and responses as well as DTOs for their transformations (create and update) """
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from datetime import date, datetime, timezone
 from typing_extensions import Self
 from employee_survey_analyzer.representations import SurveyInvalidDateRangeError
+
+# ======================== SURVEY MODELS ========================
 
 
 class Survey(BaseModel):
@@ -9,11 +13,12 @@ class Survey(BaseModel):
 
     id: int
     title: str
-    prompt: str = Field(min_length=12) # Shortest open prompt: "How are you?"
+    prompt: str = Field(min_length=12) # shortest open prompt: "How are you?"
     department: str
     open_date: date
     close_date: date
 
+    # validate against impossible date range
     @model_validator(mode='after')
     def validate_dates(self) -> Self:
         if self.close_date < self.open_date:
@@ -40,6 +45,9 @@ class UpdateSurveyDTO(BaseModel):
     title: str
     prompt: str = Field(min_length=12)
     close_date: date
+
+
+# ======================== RESPONSE MODELS ========================
 
 
 class Response(BaseModel):

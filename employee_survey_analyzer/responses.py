@@ -1,3 +1,5 @@
+""" Envelopes for uniform JSON responses for outputs and errors """
+
 from employee_survey_analyzer.surveys.models import Survey, Response
 from flask import jsonify
 

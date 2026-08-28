@@ -1,3 +1,5 @@
+""" App factory for registering blueprints, starting logging, and global exception handling """
+
 import os
 import uuid
 import time

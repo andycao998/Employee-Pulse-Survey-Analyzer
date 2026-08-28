@@ -1,3 +1,5 @@
+""" Database layer check for health """
+
 from employee_survey_analyzer.extensions import db
 from sqlalchemy import select
 from sqlalchemy.exc import DBAPIError

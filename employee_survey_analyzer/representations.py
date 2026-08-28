@@ -1,5 +1,8 @@
+""" Custom exception handlers for various operations that require validation """
+
 class SurveyError(Exception):
     """ Base exception for all survey errors """
+
     def __init__(self, code: str, status: int, detail: str | None = None) -> None:
         super().__init__(detail or code)
         self.code = code
@@ -20,6 +23,7 @@ class SurveyUnmodifiableError(SurveyError):
 
 class InvalidAuthorizationError(Exception):
     """ Represents that a response deletion was done without the valid steps"""
+
     def __init__(self, code: str, status: int, detail: str | None = None) -> None:
         super().__init__(detail or code)
         self.code = code

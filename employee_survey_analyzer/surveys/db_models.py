@@ -1,3 +1,5 @@
+""" ORM for mapping object properties to columns in the surveys and survey_responses tables """
+
 from datetime import date, datetime, timezone
 from employee_survey_analyzer.extensions import db
 from sqlalchemy import ForeignKey, String, Text, Date
@@ -16,7 +18,7 @@ class SurveyRecord(db.Model):
     # each survey will contain a list of associated responses
     responses: Mapped[list["SurveyResponses"]] = relationship(
         back_populates="survey",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan" # decision to additionally delete all responses of a deleted survey
     )
 
 class SurveyResponses(db.Model):

@@ -1,9 +1,13 @@
+""" Routing for allowed interactions (including admin-only) with surveys and responses """
+
 from flask import Blueprint, jsonify, request
 from employee_survey_analyzer.surveys import services
 from employee_survey_analyzer.responses import dashboard_envelope, list_envelope, single_envelope
 from employee_survey_analyzer.decorators import requires_admin
 
 surveys_bp = Blueprint("surveys", __name__)
+
+# ======================== SURVEY ENDPOINTS ========================
 
 # GET /api/v1/surveys/dashboard
 @surveys_bp.get("/dashboard")
@@ -37,9 +41,9 @@ def update_existing_survey(survey_id: int):
 @requires_admin
 def delete_existing_survey(survey_id: int):
     services.delete_survey(survey_id)
-    return jsonify(status="DELETED"), 204 # TODO: this msg no longer shows on successful deletion
+    return jsonify(status="DELETED"), 204
 
-
+# ======================== RESPONSE ENDPOINTS ========================
 
 # GET /api/v1/surveys/{id}/responses
 @surveys_bp.get("/<int:survey_id>/responses")
@@ -52,9 +56,12 @@ def create_new_response(survey_id: int):
     body: dict[str, str] = request.get_json(silent=True) or {}
     return single_envelope(services.create_response(survey_id, body)), 201
 
+# DELETE /api/v1/surveys/responses/{id}
 @surveys_bp.delete("/responses/<int:response_id>")
 @requires_admin
 def authorized_delete_response(response_id: int):
+    """ Requires both an admin key and a confirmation step in the request body """
+
     body: dict[str, str] = request.get_json(silent=True) or {}
 
     services.delete_response(response_id, body)
