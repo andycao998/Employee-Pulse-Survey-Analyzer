@@ -1,12 +1,14 @@
 import os
 import uuid
-from flask import Flask, g
+import time
+from flask import Flask, g, request, Response
 from flask_migrate import Migrate
 from pydantic import ValidationError
 from employee_survey_analyzer.surveys.routes import surveys_bp
 from employee_survey_analyzer.extensions import db
 from employee_survey_analyzer.responses import error_response
 from employee_survey_analyzer.representations import SurveyNotFoundError, SurveyInvalidDateRangeError, SurveyUnavailableError, SurveyUnmodifiableError, InvalidAuthorizationError
+from employee_survey_analyzer.logging import logger
 
 migrate = Migrate()
 
@@ -20,8 +22,24 @@ def create_app():
     migrate.init_app(app, db) 
 
     @app.before_request
-    def get_request_id():
+    def start_request():
         g.request_id = str(uuid.uuid4())
+        g.start_time = time.perf_counter()
+
+    @app.after_request
+    def log_request(response: Response) -> Response:
+        duration = time.perf_counter() - g.start_time
+
+        logger.info(
+            "request completed",
+            method=request.method,
+            path=request.path,
+            status_code=response.status_code,
+            duration=duration,
+            correlation_id=g.request_id
+        )
+
+        return response
 
     # Error Handlers
     @app.errorhandler(SurveyInvalidDateRangeError)
