@@ -46,13 +46,14 @@ def create_app():
     def start_request():
         g.request_id = str(uuid.uuid4())
         g.start_time = time.perf_counter()
+        g.request_event = "Request completed"
 
     @app.after_request
     def log_request(response: Response) -> Response:
         duration = time.perf_counter() - g.start_time
 
         logger.info(
-            "request completed",
+            event=g.request_event,
             method=request.method,
             path=request.path,
             status_code=response.status_code,
@@ -67,39 +68,43 @@ def create_app():
     # catches SurveyInvalidDateRangeError, SurveyUnavailableError, SurveyUnmodifiableError, SurveyNotFoundError
     @app.errorhandler(SurveyError)
     def handle_survey_error(error: SurveyError):
+        g.request_event = f"Request failed: {type(error).__name__}"
         return error_response(code=error.code, status=error.status, detail=error.detail, request_id=g.request_id)
 
     @app.errorhandler(InvalidAuthorizationError)
     def handle_authorization_error(error: InvalidAuthorizationError):
+        g.request_event = "Request failed: InvalidAuthorizationError"
         return error_response(code=error.code, status=error.status, detail=error.detail, request_id=g.request_id)
 
     @app.errorhandler(ValidationError)
     def handle_validation_error(error: ValidationError):
         first_error = error.errors()[0]
         detail_str = f"{first_error['loc']}: {first_error['msg']}"
-
-        # 422 - UNPROCESSABLE_CONTENT > more specific than a 400
+        g.request_event = "Request failed: ValidationError"
         return error_response(code="VALIDATION_FAILED", status=422, detail=detail_str, request_id=g.request_id)
 
     @app.errorhandler(ClientError)
     def handle_aws_client_error(error):
         # only extracting the code from aws so we don't reveal too much info to client
         aws_code = error.response.get("Error", {}).get("Code", "UnknownAwsError")
-        status = _CLIENT_FAULT_STATUS.get(aws_code, 502) # default to 502 - Bad Gateway Error
-        app.logger.exception("AWS call failed: %s", aws_code)
-        return error_response("aws_error", status, aws_code)
+        status = _CLIENT_FAULT_STATUS.get(aws_code, 502)
+        g.request_event = f"AWS call failed: {type(error).__name__}" # internal log to see error
+        return error_response(code="AWS_ERROR", status=status, detail=aws_code, request_id=g.request_id)
 
     @app.errorhandler(BotoCoreError)
     def handle_botocore_error(error):
-        app.logger.exception("AWS SDK/configuration error")
-        return error_response("aws_configuration_error", 500, type(error).__name__)
+        details = "AWS SDK/configuration error"
+        g.request_event = details + ": " + type(error).__name__
+        return error_response(code="AWS_CONFIGURATION_ERROR", status=500, detail=details, request_id=g.request_id)
 
-    # @app.errorhandler(Exception)
-    # def handle_unhandled_exception(error: Exception):
-    #     return error_response(code="INTERNAL", status=500, detail="An unexpected error occurred", request_id=g.request_id)
+    @app.errorhandler(Exception)
+    def handle_unhandled_exception(error: Exception):
+        g.request_event = f"Request failed: {type(error).__name__}"
+        return error_response(code="INTERNAL", status=500, detail="An unexpected error occurred", request_id=g.request_id)
 
     @app.errorhandler(404)
     def handle_resource_not_found(error: Exception):
+        g.request_event = "Invalid request path"
         return error_response(code="NOT_FOUND", status=404, detail="No route for the given path", request_id=g.request_id)
 
     return app
