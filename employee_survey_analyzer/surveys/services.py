@@ -1,6 +1,6 @@
 """ Business logic for performing validation and directing database operations on surveys and responses"""
 
-from datetime import date
+from datetime import date, datetime
 from employee_survey_analyzer.surveys.db_models import SurveyRecord, SurveyResponses
 from employee_survey_analyzer.surveys.models import Survey, CreateSurveyDTO, UpdateSurveyDTO, Response, CreateResponseDTO
 from employee_survey_analyzer.surveys import store
@@ -131,10 +131,15 @@ def delete_survey(survey_id: int) -> None:
 
 # ======================== RESPONSE LOGIC ========================
 
-def get_all_responses(survey_id: int) -> list[Response]:
+def get_all_responses(survey_id: int, sentiment: str | None, submission_date: str | None) -> list[Response]:
     """ Retrieve all responses for a given survey """
 
-    rows = store.get_all_responses(survey_id)
+    # Convert from string to datetime expected in DB
+    submission_datetime = None
+    if submission_date:
+        submission_datetime = datetime.strptime(submission_date, "%Y-%m-%d")
+
+    rows = store.get_all_responses(survey_id, sentiment, submission_datetime)
     return [Response.model_validate(row) for row in rows]
 
 def validate_response(survey_id: int) -> None:

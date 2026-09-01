@@ -12,7 +12,7 @@ surveys_bp = Blueprint("surveys", __name__)
 # GET /api/v1/surveys/dashboard
 @surveys_bp.get("/dashboard")
 def view_all_surveys() -> Response:
-    department = request.args.get("department")
+    department = request.args.get("department") # optional filter for department
     return dashboard_envelope(services.get_all_surveys(department))
 
 # GET /api/v1/surveys/{id}
@@ -54,7 +54,11 @@ def delete_existing_survey(survey_id: int) -> tuple[Response, int]:
 # GET /api/v1/surveys/{id}/responses
 @surveys_bp.get("/<int:survey_id>/responses")
 def view_all_responses(survey_id: int) -> Response:
-    return list_envelope(services.get_all_responses(survey_id))
+    # optional filters for sentiment and submission_date
+    sentiment = request.args.get("sentiment")
+    submission_date = request.args.get("submission_date")
+    
+    return list_envelope(services.get_all_responses(survey_id, sentiment, submission_date))
 
 # POST /api/v1/surveys/{id}/responses
 @surveys_bp.post("/<int:survey_id>/responses")
