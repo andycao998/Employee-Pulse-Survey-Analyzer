@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from datetime import date, datetime, timezone
+from typing import Literal
 from typing_extensions import Self
 from employee_survey_analyzer.representations import SurveyInvalidDateRangeError
 
@@ -42,6 +43,7 @@ class CreateSurveyDTO(BaseModel):
 class UpdateSurveyDTO(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    # only allow editing of title, prompt, and close_date
     title: str
     prompt: str = Field(min_length=12)
     close_date: date
@@ -49,6 +51,7 @@ class UpdateSurveyDTO(BaseModel):
 
 # ======================== RESPONSE MODELS ========================
 
+Sentiment = Literal["NEUTRAL", "POSITIVE", "NEGATIVE", "MIXED"]
 
 class Response(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -57,6 +60,8 @@ class Response(BaseModel):
     body: str = Field(min_length=15, frozen=True) # extra validation for response immutability
     survey_id: int
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    sentiment: Sentiment
+    confidence_score: float
 
 
 class CreateResponseDTO(BaseModel):
@@ -64,3 +69,5 @@ class CreateResponseDTO(BaseModel):
 
     body: str = Field(frozen=True)
     survey_id: int
+    sentiment: Sentiment
+    confidence_score: float

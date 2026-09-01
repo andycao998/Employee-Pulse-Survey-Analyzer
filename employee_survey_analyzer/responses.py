@@ -1,5 +1,6 @@
 """ Envelopes for uniform JSON responses for outputs and errors """
 
+from typing import Any, Mapping
 from employee_survey_analyzer.surveys.models import Survey, Response
 from flask import jsonify
 
@@ -11,6 +12,9 @@ def list_envelope(surveys: list[Survey] | list[Response]):
 
 def single_envelope(survey: Survey | Response):
     return jsonify(survey.model_dump(mode="json"))
+
+def generic_envelope(content: Mapping[str, Any]):
+    return jsonify(content)
 
 def error_response(code: str, status: int, request_id: str, detail: str | None = None):
     return jsonify(error=code, detail=detail, request_id=request_id), status

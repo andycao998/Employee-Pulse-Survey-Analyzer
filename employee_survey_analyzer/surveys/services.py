@@ -5,7 +5,8 @@ from employee_survey_analyzer.surveys.db_models import SurveyRecord, SurveyRespo
 from employee_survey_analyzer.surveys.models import Survey, CreateSurveyDTO, UpdateSurveyDTO, Response, CreateResponseDTO
 from employee_survey_analyzer.surveys import store
 from employee_survey_analyzer.representations import SurveyNotFoundError, SurveyUnavailableError, SurveyUnmodifiableError, InvalidAuthorizationError
-from typing import Literal
+from employee_survey_analyzer.analysis.service import analyze_sentiment, redact_pii, summarize_key_phrases
+from typing import Literal, TypedDict
 
 # ======================== SURVEY LOGIC ========================
 
@@ -23,10 +24,10 @@ def get_survey_status(survey: Survey) -> Status:
 
     return "closed"
 
-def get_all_surveys() -> list[dict[str, str]]:
+def get_all_surveys(department: str | None) -> list[dict[str, str]]:
     """ Retrieve all surveys and append their open/closed status to output """
 
-    rows = store.get_all_surveys()
+    rows = store.get_all_surveys(department)
 
     surveys = [Survey.model_validate(row) for row in rows]
 
@@ -47,6 +48,42 @@ def get_survey_by_id(survey_id: int) -> Survey:
         raise SurveyNotFoundError(code="NOT_FOUND", status=404, detail=f"Survey (ID={survey_id}) not found")
 
     return Survey.model_validate(row)
+
+class Summary(TypedDict):
+    survey_id: int
+    response_count: int
+    sentiment_distribution: dict[str, float]
+    top_phrases: list[dict[str, str | int]]
+
+def generate_survey_summary(survey_id: int) -> Summary:
+    """ Compile a survey's overall response mood, tracking sentiment and key phrase breakdowns """
+
+    record = store.get_survey_by_id(survey_id)
+    if record is None:
+        raise SurveyNotFoundError(code="NOT_FOUND", status=404, detail=f"Survey (ID={survey_id}) not found")
+    
+    responses = record.responses
+    response_count = len(responses)
+    sentiment_counts = {"POSITIVE": 0, "NEGATIVE": 0, "NEUTRAL": 0, "MIXED": 0}
+    response_bodies = []
+    for response in responses:
+        response_bodies.append(response.body)
+        sentiment = response.sentiment
+        sentiment_counts[sentiment] = sentiment_counts.get(sentiment, 0) + 1
+
+    sentiment_dist = {
+        sentiment: round(count / response_count, 3)
+        for sentiment, count in sentiment_counts.items()
+    }
+
+    top_phrases = summarize_key_phrases(response_bodies)
+
+    return {
+        "survey_id": survey_id,
+        "response_count": len(responses),
+        "sentiment_distribution": sentiment_dist,
+        "top_phrases": top_phrases
+    }
 
 def create_survey(survey_details: dict[str, str]) -> Survey:
     """ Validate inputted survey information before delegating survey creation in database """
@@ -116,14 +153,19 @@ def create_response(survey_id: int, response_details: dict[str, str]) -> Respons
 
     validate_response(survey_id)
 
+    response_details["body"] = redact_pii(response_details["body"])
+    sentiment, score = analyze_sentiment(response_details["body"])
+
     valid_response = CreateResponseDTO.model_validate({
         **response_details, 
-        "survey_id": survey_id
+        "survey_id": survey_id,
+        "sentiment": sentiment,
+        "confidence_score": score
     })
 
     record = SurveyResponses(**valid_response.model_dump())
     store.create_response(record)
-
+    
     response = Response.model_validate(record)
 
     store.commit_change()

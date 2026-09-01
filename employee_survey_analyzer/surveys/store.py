@@ -2,12 +2,17 @@
 
 from employee_survey_analyzer.surveys.db_models import SurveyRecord, SurveyResponses
 from employee_survey_analyzer.extensions import db
-from sqlalchemy import ScalarResult, select
+from sqlalchemy import ScalarResult, select, func
 
 # ======================== SURVEY QUERIES ========================
 
-def get_all_surveys() -> ScalarResult[SurveyRecord]:
-    stmt = select(SurveyRecord).order_by(SurveyRecord.id)
+def get_all_surveys(department: str | None) -> ScalarResult[SurveyRecord]:
+    if department:
+        stmt = select(SurveyRecord).where(
+            func.lower(SurveyRecord.department) == department.lower()
+        ).order_by(SurveyRecord.department)
+    else:
+        stmt = select(SurveyRecord).order_by(SurveyRecord.id)
     return db.session.execute(stmt).scalars()
 
 def get_survey_by_id(survey_id: int) -> SurveyRecord | None:

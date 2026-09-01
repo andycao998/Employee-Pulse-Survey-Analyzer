@@ -10,8 +10,25 @@ from employee_survey_analyzer.surveys.routes import surveys_bp
 from employee_survey_analyzer.health.routes import health_bp
 from employee_survey_analyzer.extensions import db
 from employee_survey_analyzer.responses import error_response
-from employee_survey_analyzer.representations import SurveyNotFoundError, SurveyInvalidDateRangeError, SurveyUnavailableError, SurveyUnmodifiableError, InvalidAuthorizationError
+from employee_survey_analyzer.representations import SurveyError, InvalidAuthorizationError
 from employee_survey_analyzer.logging import logger
+from botocore.exceptions import BotoCoreError, ClientError
+
+# Common AWS errors and their codes
+_CLIENT_FAULT_STATUS = {
+    "AccessDeniedException": 403,
+    "AccessDenied": 403,
+    "UnrecognizedClientException": 403,
+    "ValidationException": 422,
+    "InvalidParameterException": 422,
+    "InvalidParameterValueException": 422,
+    "TextSizeLimitExceededException": 422,
+    "InvalidRequestException": 422,
+    "UnsupportedLanguagePairException": 422,
+    "ThrottlingException": 429,
+    "TooManyRequestsException": 429,
+    "ResourceNotFoundException": 404,
+}
 
 migrate = Migrate()
 
@@ -46,20 +63,10 @@ def create_app():
         return response
 
     # Error Handlers
-    @app.errorhandler(SurveyInvalidDateRangeError)
-    def handle_survey_date_error(error: SurveyInvalidDateRangeError):
-        return error_response(code=error.code, status=error.status, detail=error.detail, request_id=g.request_id)
 
-    @app.errorhandler(SurveyUnavailableError)
-    def handle_survey_unavailable_error(error: SurveyUnavailableError):
-        return error_response(code=error.code, status=error.status, detail=error.detail, request_id=g.request_id)
-
-    @app.errorhandler(SurveyUnmodifiableError)
-    def handle_survey_unmodifiable_error(error: SurveyUnmodifiableError):
-        return error_response(code=error.code, status=error.status, detail=error.detail, request_id=g.request_id)
-
-    @app.errorhandler(SurveyNotFoundError)
-    def handle_api_error(error: SurveyNotFoundError):
+    # catches SurveyInvalidDateRangeError, SurveyUnavailableError, SurveyUnmodifiableError, SurveyNotFoundError
+    @app.errorhandler(SurveyError)
+    def handle_survey_error(error: SurveyError):
         return error_response(code=error.code, status=error.status, detail=error.detail, request_id=g.request_id)
 
     @app.errorhandler(InvalidAuthorizationError)
@@ -74,9 +81,22 @@ def create_app():
         # 422 - UNPROCESSABLE_CONTENT > more specific than a 400
         return error_response(code="VALIDATION_FAILED", status=422, detail=detail_str, request_id=g.request_id)
 
-    @app.errorhandler(Exception)
-    def handle_unhandled_exception(error: Exception):
-        return error_response(code="INTERNAL", status=500, detail="An unexpected error occurred", request_id=g.request_id)
+    @app.errorhandler(ClientError)
+    def handle_aws_client_error(error):
+        # only extracting the code from aws so we don't reveal too much info to client
+        aws_code = error.response.get("Error", {}).get("Code", "UnknownAwsError")
+        status = _CLIENT_FAULT_STATUS.get(aws_code, 502) # default to 502 - Bad Gateway Error
+        app.logger.exception("AWS call failed: %s", aws_code)
+        return error_response("aws_error", status, aws_code)
+
+    @app.errorhandler(BotoCoreError)
+    def handle_botocore_error(error):
+        app.logger.exception("AWS SDK/configuration error")
+        return error_response("aws_configuration_error", 500, type(error).__name__)
+
+    # @app.errorhandler(Exception)
+    # def handle_unhandled_exception(error: Exception):
+    #     return error_response(code="INTERNAL", status=500, detail="An unexpected error occurred", request_id=g.request_id)
 
     @app.errorhandler(404)
     def handle_resource_not_found(error: Exception):

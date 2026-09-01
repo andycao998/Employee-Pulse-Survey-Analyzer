@@ -2,7 +2,7 @@
 
 from datetime import date, datetime, timezone
 from employee_survey_analyzer.extensions import db
-from sqlalchemy import ForeignKey, String, Text, Date
+from sqlalchemy import ForeignKey, String, Text, Date, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 class SurveyRecord(db.Model):
@@ -30,5 +30,8 @@ class SurveyResponses(db.Model):
 
     # establishing the FK to the surveys table
     survey_id: Mapped[int] = mapped_column(ForeignKey("surveys.id"), nullable=False)
+
+    sentiment: Mapped[str] = mapped_column(String(10), nullable=False)
+    confidence_score: Mapped[float] = mapped_column(Float, nullable=False)
 
     survey: Mapped["SurveyRecord"] = relationship(back_populates="responses")
