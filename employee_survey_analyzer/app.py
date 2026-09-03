@@ -83,24 +83,24 @@ def create_app():
         g.request_event = "Request failed: ValidationError"
         return error_response(code="VALIDATION_FAILED", status=422, detail=detail_str, request_id=g.request_id)
 
-    @app.errorhandler(ClientError)
-    def handle_aws_client_error(error):
-        # only extracting the code from aws so we don't reveal too much info to client
-        aws_code = error.response.get("Error", {}).get("Code", "UnknownAwsError")
-        status = _CLIENT_FAULT_STATUS.get(aws_code, 502)
-        g.request_event = f"AWS call failed: {type(error).__name__}" # internal log to see error
-        return error_response(code="AWS_ERROR", status=status, detail=aws_code, request_id=g.request_id)
+    # @app.errorhandler(ClientError)
+    # def handle_aws_client_error(error):
+    #     # only extracting the code from aws so we don't reveal too much info to client
+    #     aws_code = error.response.get("Error", {}).get("Code", "UnknownAwsError")
+    #     status = _CLIENT_FAULT_STATUS.get(aws_code, 502)
+    #     g.request_event = f"AWS call failed: {type(error).__name__}" # internal log to see error
+    #     return error_response(code="AWS_ERROR", status=status, detail=aws_code, request_id=g.request_id)
 
-    @app.errorhandler(BotoCoreError)
-    def handle_botocore_error(error):
-        details = "AWS SDK/configuration error"
-        g.request_event = details + ": " + type(error).__name__
-        return error_response(code="AWS_CONFIGURATION_ERROR", status=500, detail=details, request_id=g.request_id)
+    # @app.errorhandler(BotoCoreError)
+    # def handle_botocore_error(error):
+    #     details = "AWS SDK/configuration error"
+    #     g.request_event = details + ": " + type(error).__name__
+    #     return error_response(code="AWS_CONFIGURATION_ERROR", status=500, detail=details, request_id=g.request_id)
 
-    @app.errorhandler(Exception)
-    def handle_unhandled_exception(error: Exception):
-        g.request_event = f"Request failed: {type(error).__name__}"
-        return error_response(code="INTERNAL", status=500, detail="An unexpected error occurred", request_id=g.request_id)
+    # @app.errorhandler(Exception)
+    # def handle_unhandled_exception(error: Exception):
+    #     g.request_event = f"Request failed: {type(error).__name__}"
+    #     return error_response(code="INTERNAL", status=500, detail="An unexpected error occurred", request_id=g.request_id)
 
     @app.errorhandler(404)
     def handle_resource_not_found(error: Exception):

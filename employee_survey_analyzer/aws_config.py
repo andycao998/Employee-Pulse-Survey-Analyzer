@@ -2,13 +2,13 @@
 
 import boto3
 from functools import lru_cache
-from employee_survey_analyzer.config import AWS_PROFILE, AWS_REGION
+from employee_survey_analyzer.config import AWS_REGION
 
 @lru_cache(maxsize=1) # caching only one return value from this function
 def get_session() -> boto3.Session:
     """ One shared session for the entire app """
 
-    return boto3.Session(profile_name=AWS_PROFILE, region_name=AWS_REGION)
+    return boto3.Session(region_name=AWS_REGION)
 
 # having a cache without a max size can still be helpful to retain results
 @lru_cache(maxsize=None)
