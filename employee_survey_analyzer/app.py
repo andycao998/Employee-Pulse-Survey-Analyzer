@@ -8,10 +8,11 @@ from flask_migrate import Migrate
 from pydantic import ValidationError
 from employee_survey_analyzer.surveys.routes import surveys_bp
 from employee_survey_analyzer.health.routes import health_bp
+from employee_survey_analyzer.logging.routes import logging_bp
+from employee_survey_analyzer.logging import logger
 from employee_survey_analyzer.extensions import db
 from employee_survey_analyzer.responses import error_response
 from employee_survey_analyzer.representations import SurveyError, InvalidAuthorizationError
-from employee_survey_analyzer.logging import logger
 from botocore.exceptions import BotoCoreError, ClientError
 
 # Common AWS errors and their codes
@@ -37,6 +38,7 @@ def create_app():
 
     app.register_blueprint(health_bp, url_prefix="/health")
     app.register_blueprint(surveys_bp, url_prefix="/api/v1/surveys")
+    app.register_blueprint(logging_bp, url_prefix="/logs")
 
     app.config["SQLALCHEMY_DATABASE_URI"] = os.environ["DATABASE_URL"] 
     db.init_app(app) 
@@ -50,14 +52,12 @@ def create_app():
 
     @app.after_request
     def log_request(response: Response) -> Response:
-        duration = time.perf_counter() - g.start_time
-
-        logger.info(
+        logger.log_request(
             event=g.request_event,
             method=request.method,
             path=request.path,
             status_code=response.status_code,
-            duration=duration,
+            start_time=g.start_time,
             correlation_id=g.request_id
         )
 
