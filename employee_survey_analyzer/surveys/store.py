@@ -7,7 +7,7 @@ from sqlalchemy import ScalarResult, select, func
 
 # ======================== SURVEY QUERIES ========================
 
-def get_all_surveys(department: str | None) -> ScalarResult[SurveyRecord]:
+def get_all_surveys(department: str | None = None) -> ScalarResult[SurveyRecord]:
     stmt = select(SurveyRecord).order_by(SurveyRecord.id)
 
     if department:
@@ -34,7 +34,7 @@ def delete_survey(record: SurveyRecord) -> None:
 def get_response_by_id(response_id: int) -> SurveyResponses | None:
     return db.session.get(SurveyResponses, response_id)
 
-def get_all_responses(survey_id: int, sentiment: str | None, submission_date: datetime | None) -> ScalarResult[SurveyResponses]:
+def get_all_responses(survey_id: int, sentiment: str | None = None, submission_date: datetime | None = None) -> ScalarResult[SurveyResponses]:
     stmt = select(SurveyResponses).where(SurveyResponses.survey_id == survey_id).order_by(SurveyResponses.id)
 
     if sentiment:

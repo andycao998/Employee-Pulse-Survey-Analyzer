@@ -24,7 +24,7 @@ def get_survey_status(survey: Survey) -> Status:
 
     return "closed"
 
-def get_all_surveys(department: str | None) -> list[dict[str, str]]:
+def get_all_surveys(department: str | None = None) -> list[dict[str, str]]:
     """ Retrieve all surveys and append their open/closed status to output """
 
     rows = store.get_all_surveys(department)
@@ -131,7 +131,7 @@ def delete_survey(survey_id: int) -> None:
 
 # ======================== RESPONSE LOGIC ========================
 
-def get_all_responses(survey_id: int, sentiment: str | None, submission_date: str | None) -> list[Response]:
+def get_all_responses(survey_id: int, sentiment: str | None = None, submission_date: str | None = None) -> list[Response]:
     """ Retrieve all responses for a given survey """
 
     # Convert from string to datetime expected in DB
