@@ -32,6 +32,9 @@ def log_request(event: str, method: str, path: str, status_code: int, start_time
         store.create_audit_log(audit_log)
 
 def create_audit_log(method: str, path: str) -> bool:
+    if len(path) <= 10: # can't be an api/v1/ endpoint
+        return False
+
     admin_ops = ["POST", "PUT", "DELETE"]
     is_create_response = path[-10:] == "/responses" # POST create response is explicitly not logged
 
