@@ -40,4 +40,3 @@ Similarly, the survey summary endpoint only makes one check at the beginning to 
 ## Resources
 1. [Entity-relationship diagram](doc/data_model.md)
 1. [IAM role policy for Comprehend](infra/policy/comprehend_policy.json)
-1. [Kanban board](https://app.asana.com/1/1134946782879758/project/1217954995482365/board/1217954814716903)
